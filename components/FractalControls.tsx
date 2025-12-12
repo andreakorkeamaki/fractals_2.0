@@ -34,6 +34,8 @@ interface FractalControlsProps {
   setDepth: (depth: number) => void;
   planeSpacing: number;
   setPlaneSpacing: (spacing: number) => void;
+  shapeWarp: number;
+  setShapeWarp: (warp: number) => void;
   colorAnimationSpeed: number;
   setColorAnimationSpeed: (speed: number) => void;
   colorInterpolationMethod: number;
@@ -61,6 +63,8 @@ export function FractalControls({
   setDepth,
   planeSpacing,
   setPlaneSpacing,
+  shapeWarp,
+  setShapeWarp,
   colorAnimationSpeed,
   setColorAnimationSpeed,
   colorInterpolationMethod,
@@ -183,6 +187,17 @@ export function FractalControls({
               </div>
 
               <div className="space-y-2">
+                <Label className="block">Shape Warp ({shapeWarp.toFixed(2)})</Label>
+                <Slider
+                  value={[shapeWarp]}
+                  onValueChange={(value) => setShapeWarp(value[0])}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label className="block">Depth ({depth.toFixed(2)})</Label>
                 <Slider
                   value={[depth]}
@@ -192,6 +207,7 @@ export function FractalControls({
                   step={0.1}
                 />
               </div>
+
             </CardContent>
           </Card>
         </TabsContent>

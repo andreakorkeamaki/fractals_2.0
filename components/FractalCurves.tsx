@@ -17,6 +17,8 @@ interface FractalCurvesProps {
   elementSize: number;
   depth: number;
   planeSpacing: number;
+  audioLevel: number;
+  shapeWarp: number;
   colorAnimationSpeed: number;
   colorInterpolationMethod: number;
 }
@@ -35,6 +37,8 @@ const FractalMaterial = shaderMaterial(
     elementSize: 0.04,
     depth: 1,
     planeSpacing: 1,
+    audioLevel: 0,
+    shapeWarp: 0,
     colorAnimationSpeed: 1,
     colorInterpolationMethod: 0,
   },
@@ -48,6 +52,8 @@ const FractalMaterial = shaderMaterial(
   uniform float elementSize;
   uniform float depth;
   uniform float planeSpacing;
+  uniform float audioLevel;
+  uniform float shapeWarp;
   
   varying vec3 vColor;
   varying float vT;
@@ -106,13 +112,20 @@ const FractalMaterial = shaderMaterial(
     float t = instanceIndex / effectiveTotal;
     float visible = step(t, 1.0);
     float clampedT = clamp(t, 0.0, 1.0);
-    float angle = clampedT * 2.0 * 3.14159 * 8.0 + time * animationSpeed;
+    float baseTurns = 8.0;
+    float warpTurns = baseTurns + shapeWarp * 8.0;
+    float turnMod = mix(baseTurns, warpTurns, 0.5 + 0.5 * sin(time * 0.6));
+    float angle = clampedT * 2.0 * 3.14159 * turnMod + time * animationSpeed;
     
     vec3 pos1 = spiral(clampedT, angle);
     vec3 pos2 = mobius(clampedT, angle);
     vec3 pos3 = trefoil(clampedT, angle);
     
     vec3 pos = blendFractals(pos1, pos2, pos3, blendFactors, blendMethod, vec2(clampedT, 0.5));
+
+    // Global warp/breathing without changing default look (shapeWarp=0)
+    float breath = 1.0 + shapeWarp * 0.35 * sin(time * 1.2 + clampedT * 12.0);
+    pos *= breath;
     
     vec3 nextPos = blendFractals(
       spiral(clamp(clampedT + 1.0/total, 0.0, 1.0), angle),
@@ -131,7 +144,9 @@ const FractalMaterial = shaderMaterial(
     vec3 cameraRight = normalize(vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]));
     vec3 cameraUp = normalize(vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]));
     
-    pos += (position.x * cameraRight + position.y * cameraUp) * elementSize;
+    float audioScale = 1.0 + audioLevel * 0.6;
+    float size = elementSize * audioScale;
+    pos += (position.x * cameraRight + position.y * cameraUp) * size;
     
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     
@@ -231,6 +246,8 @@ export function FractalCurves({
   elementSize,
   depth,
   planeSpacing,
+  audioLevel,
+  shapeWarp,
   colorAnimationSpeed,
   colorInterpolationMethod,
 }: FractalCurvesProps) {
@@ -273,6 +290,8 @@ export function FractalCurves({
       matRef.current.elementSize = elementSize;
       matRef.current.depth = depth;
       matRef.current.planeSpacing = planeSpacing;
+      matRef.current.audioLevel = audioLevel;
+      matRef.current.shapeWarp = shapeWarp;
       matRef.current.colorAnimationSpeed = colorAnimationSpeed;
       matRef.current.colorInterpolationMethod = colorInterpolationMethod;
     }
