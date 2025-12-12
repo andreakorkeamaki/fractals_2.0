@@ -1,15 +1,12 @@
 import React from 'react';
 import * as THREE from 'three';
-import { Settings, Palette, Download, Square, Video as Record } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Settings, Palette } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 
 interface CustomColors {
@@ -35,26 +32,14 @@ interface FractalControlsProps {
   setElementSize: (size: number) => void;
   depth: number;
   setDepth: (depth: number) => void;
+  planeSpacing: number;
+  setPlaneSpacing: (spacing: number) => void;
   colorAnimationSpeed: number;
   setColorAnimationSpeed: (speed: number) => void;
   colorInterpolationMethod: number;
   setColorInterpolationMethod: (method: number) => void;
   backgroundColor: string;
   setBackgroundColor: (color: string) => void;
-  isRecording: boolean;
-  handleRecordToggle: () => void;
-  recordingProgress: number;
-  recordingFrames: string[];
-  recordingFrameCount: number;
-  exportFormat: string;
-  setExportFormat: (format: string) => void;
-  exportFramerate: number;
-  setExportFramerate: (rate: number) => void;
-  handleExport: () => void;
-  handleExportPngSequence: () => void;
-  handleExportSingleFrame: () => void;
-  exportInProgress: boolean;
-  exportProgress: number;
 }
 
 export function FractalControls({
@@ -74,31 +59,19 @@ export function FractalControls({
   setElementSize,
   depth,
   setDepth,
+  planeSpacing,
+  setPlaneSpacing,
   colorAnimationSpeed,
   setColorAnimationSpeed,
   colorInterpolationMethod,
   setColorInterpolationMethod,
   backgroundColor,
   setBackgroundColor,
-  isRecording,
-  handleRecordToggle,
-  recordingProgress,
-  recordingFrames,
-  recordingFrameCount,
-  exportFormat,
-  setExportFormat,
-  exportFramerate,
-  setExportFramerate,
-  handleExport,
-  handleExportPngSequence,
-  handleExportSingleFrame,
-  exportInProgress,
-  exportProgress
 }: FractalControlsProps) {
   return (
     <div className="fixed right-4 top-4 w-80 bg-white dark:bg-slate-900 shadow-lg rounded-lg overflow-hidden z-10">
       <Tabs defaultValue="settings">
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="settings" className="flex items-center gap-1">
             <Settings className="w-4 h-4" />
             <span>Settings</span>
@@ -106,10 +79,6 @@ export function FractalControls({
           <TabsTrigger value="colors" className="flex items-center gap-1">
             <Palette className="w-4 h-4" />
             <span>Colors</span>
-          </TabsTrigger>
-          <TabsTrigger value="export" className="flex items-center gap-1">
-            <Download className="w-4 h-4" />
-            <span>Export</span>
           </TabsTrigger>
         </TabsList>
 
@@ -203,6 +172,17 @@ export function FractalControls({
               </div>
 
               <div className="space-y-2">
+                <Label className="block">Plane Spacing ({planeSpacing.toFixed(2)}×)</Label>
+                <Slider
+                  value={[planeSpacing]}
+                  onValueChange={(value) => setPlaneSpacing(value[0])}
+                  min={0.5}
+                  max={5}
+                  step={0.1}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label className="block">Depth ({depth.toFixed(2)})</Label>
                 <Slider
                   value={[depth]}
@@ -212,46 +192,6 @@ export function FractalControls({
                   step={0.1}
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-md">Recording Controls</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label>Record Animation</Label>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    onClick={handleRecordToggle}
-                    variant={isRecording ? "destructive" : "outline"}
-                    size="sm"
-                  >
-                    {isRecording ? (
-                      <>
-                        <Square className="w-4 h-4 mr-1" />
-                        Stop
-                      </>
-                    ) : (
-                      <>
-                        <Record className="w-4 h-4 mr-1" />
-                        Record
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {isRecording && (
-                <div className="space-y-2">
-                  <Label className="flex justify-between">
-                    <span>Progress:</span>
-                    <span>{recordingFrameCount} frames</span>
-                  </Label>
-                  <Progress value={recordingProgress * 100} />
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -355,79 +295,6 @@ export function FractalControls({
                   <span className="text-sm">{backgroundColor}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="export" className="p-4 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-md">Export Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recordingFrames.length > 0 ? (
-                <>
-                  <div className="space-y-2">
-                    <Label className="block mb-2">Export Format</Label>
-                    <Select
-                      value={exportFormat}
-                      onValueChange={setExportFormat}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mp4">MP4 Video</SelectItem>
-                        <SelectItem value="webm">WebM Video</SelectItem>
-                        <SelectItem value="png">PNG Sequence</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {(exportFormat === "mp4" || exportFormat === "webm") && (
-                    <div className="space-y-2">
-                      <Label className="block">Framerate ({exportFramerate} fps)</Label>
-                      <Slider
-                        value={[exportFramerate]}
-                        onValueChange={(value) => setExportFramerate(value[0])}
-                        min={15}
-                        max={60}
-                        step={1}
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Button
-                      onClick={exportFormat === "png" ? handleExportPngSequence : handleExport}
-                      className="w-full"
-                      disabled={exportInProgress}
-                    >
-                      {exportInProgress ? "Processing..." : `Export ${recordingFrames.length} Frames`}
-                    </Button>
-
-                    {exportInProgress && (
-                      <div className="mt-2 space-y-1">
-                        <Label className="flex justify-between">
-                          <span>Export Progress:</span>
-                          <span>{Math.round(exportProgress * 100)}%</span>
-                        </Label>
-                        <Progress value={exportProgress * 100} />
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm">No recorded frames available. Record animation first to export.</p>
-                  <Button
-                    onClick={handleExportSingleFrame}
-                    className="w-full"
-                  >
-                    Export Current Frame as PNG
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

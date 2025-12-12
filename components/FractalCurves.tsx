@@ -1,6 +1,4 @@
-/// <reference path="../types/leva.d.ts" />
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame, extend } from "@react-three/fiber"
 import { shaderMaterial } from "@react-three/drei"
@@ -18,6 +16,7 @@ interface FractalCurvesProps {
   animationSpeed: number;
   elementSize: number;
   depth: number;
+  planeSpacing: number;
   colorAnimationSpeed: number;
   colorInterpolationMethod: number;
 }
@@ -35,21 +34,24 @@ const FractalMaterial = shaderMaterial(
     animationSpeed: 1,
     elementSize: 0.04,
     depth: 1,
+    planeSpacing: 1,
     colorAnimationSpeed: 1,
     colorInterpolationMethod: 0,
   },
   // Vertex Shader
   `
-  attribute float index;
+  attribute float instanceIndex;
   uniform float time;
   uniform vec3 blendFactors;
   uniform int blendMethod;
   uniform float animationSpeed;
   uniform float elementSize;
   uniform float depth;
+  uniform float planeSpacing;
   
   varying vec3 vColor;
-  varying float vIndex;
+  varying float vT;
+  varying float vVisible;
   
   vec3 spiral(float t, float angle) {
     return vec3(
@@ -100,20 +102,23 @@ const FractalMaterial = shaderMaterial(
   
   void main() {
     float total = 5000.0;
-    float t = index / total;
-    float angle = t * 2.0 * 3.14159 * 8.0 + time * animationSpeed;
+    float effectiveTotal = total / planeSpacing;
+    float t = instanceIndex / effectiveTotal;
+    float visible = step(t, 1.0);
+    float clampedT = clamp(t, 0.0, 1.0);
+    float angle = clampedT * 2.0 * 3.14159 * 8.0 + time * animationSpeed;
     
-    vec3 pos1 = spiral(t, angle);
-    vec3 pos2 = mobius(t, angle);
-    vec3 pos3 = trefoil(t, angle);
+    vec3 pos1 = spiral(clampedT, angle);
+    vec3 pos2 = mobius(clampedT, angle);
+    vec3 pos3 = trefoil(clampedT, angle);
     
-    vec3 pos = blendFractals(pos1, pos2, pos3, blendFactors, blendMethod, vec2(t, 0.5));
+    vec3 pos = blendFractals(pos1, pos2, pos3, blendFactors, blendMethod, vec2(clampedT, 0.5));
     
     vec3 nextPos = blendFractals(
-      spiral(t + 1.0/total, angle),
-      mobius(t + 1.0/total, angle),
-      trefoil(t + 1.0/total, angle),
-      blendFactors, blendMethod, vec2(t + 1.0/total, 0.5)
+      spiral(clamp(clampedT + 1.0/total, 0.0, 1.0), angle),
+      mobius(clamp(clampedT + 1.0/total, 0.0, 1.0), angle),
+      trefoil(clamp(clampedT + 1.0/total, 0.0, 1.0), angle),
+      blendFactors, blendMethod, vec2(clampedT + 1.0/total, 0.5)
     );
     
     vec3 dir = normalize(nextPos - pos);
@@ -130,8 +135,9 @@ const FractalMaterial = shaderMaterial(
     
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     
-    vColor = vec3(t, t, t);
-    vIndex = index;
+    vColor = vec3(clampedT, clampedT, clampedT);
+    vT = clampedT;
+    vVisible = visible;
   }
   `,
   // Fragment Shader 
@@ -146,7 +152,8 @@ const FractalMaterial = shaderMaterial(
   uniform int colorInterpolationMethod;
   
   varying vec3 vColor;
-  varying float vIndex;
+  varying float vT;
+  varying float vVisible;
   
   vec3 palette(float t) {
     vec3 a, b, c, d;
@@ -197,7 +204,9 @@ const FractalMaterial = shaderMaterial(
   }
   
   void main() {
-    gl_FragColor = vec4(palette(vIndex / 5000.0), 1.0);
+    float alpha = vVisible;
+    if (alpha <= 0.0) discard;
+    gl_FragColor = vec4(palette(vT), alpha);
   }
   `
 );
@@ -221,13 +230,29 @@ export function FractalCurves({
   animationSpeed,
   elementSize,
   depth,
+  planeSpacing,
   colorAnimationSpeed,
   colorInterpolationMethod,
 }: FractalCurvesProps) {
-  const geom = React.useRef<THREE.BufferGeometry | null>(null);
+  const geom = React.useRef<THREE.PlaneGeometry | null>(null);
   const matRef = React.useRef<any>(null);
   const meshRef = React.useRef<THREE.InstancedMesh | null>(null);
   const numElements = 5000;
+
+  const instanceIndices = useMemo(() => {
+    const arr = new Float32Array(numElements);
+    for (let i = 0; i < numElements; i++) arr[i] = i;
+    return arr;
+  }, [numElements]);
+
+  useEffect(() => {
+    if (geom.current) {
+      geom.current.setAttribute(
+        "instanceIndex",
+        new THREE.InstancedBufferAttribute(instanceIndices, 1)
+      );
+    }
+  }, [instanceIndices]);
 
   useEffect(() => {
     if (geom.current && matRef.current) {
@@ -247,6 +272,7 @@ export function FractalCurves({
       matRef.current.animationSpeed = animationSpeed;
       matRef.current.elementSize = elementSize;
       matRef.current.depth = depth;
+      matRef.current.planeSpacing = planeSpacing;
       matRef.current.colorAnimationSpeed = colorAnimationSpeed;
       matRef.current.colorInterpolationMethod = colorInterpolationMethod;
     }
@@ -254,7 +280,7 @@ export function FractalCurves({
 
   return (
     <instancedMesh ref={meshRef} args={[null!, null!, numElements]} frustumCulled={false}>
-      <planeGeometry ref={geom} args={[1, 1]} />
+      <planeGeometry ref={geom} args={[1, 1]} attach="geometry" />
       <fractalMaterial ref={matRef} transparent={true} />
     </instancedMesh>
   );
