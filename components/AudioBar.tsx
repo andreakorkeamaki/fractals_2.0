@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { AudioBands } from "@/hooks/useAudioAnalyzer";
 
 type TargetKey = "elementSize" | "depth" | "animationSpeed" | "planeSpacing" | "colorAnimationSpeed" | "shapeWarp";
@@ -51,40 +51,55 @@ export default function AudioBar({
   bandGain,
   setBandGain,
 }: AudioBarProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-t border-border">
-      <div className="mx-auto max-w-5xl px-4 py-3 space-y-2">
-        <div className="flex items-center gap-3">
-          <button
-            className="px-3 py-1 rounded-md border text-sm"
-            disabled={!isReady}
-            onClick={isPlaying ? onPause : onPlay}
-          >
-            {isPlaying ? "Pause" : "Play"}
-          </button>
+      <div className="mx-auto max-w-5xl px-3 py-2 md:px-4 md:py-3 space-y-2">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1 rounded-md border text-sm"
+              disabled={!isReady}
+              onClick={isPlaying ? onPause : onPlay}
+            >
+              {isPlaying ? "Pause" : "Play"}
+            </button>
 
-          <button
-            className="px-3 py-1 rounded-md border text-sm"
-            onClick={mode === "mic" ? onStopMic : onStartMic}
-          >
-            {mode === "mic" ? "Stop Mic" : "Use Mic"}
-          </button>
+            <button
+              className="px-3 py-1 rounded-md border text-sm"
+              onClick={mode === "mic" ? onStopMic : onStartMic}
+            >
+              {mode === "mic" ? "Stop Mic" : "Use Mic"}
+            </button>
 
-          {mode === "file" && (
-            <input
-              type="file"
-              accept="audio/*"
-              className="text-sm"
-              onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-            />
-          )}
-
-          <div className="text-sm truncate flex-1">
-            {fileName ?? "No audio loaded"}
+            {mode === "file" && (
+              <label className="px-3 py-1 rounded-md border text-sm cursor-pointer">
+                Upload
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            )}
           </div>
 
-          <div className="text-xs text-muted-foreground tabular-nums">
-            {formatTime(currentTime)} / {formatTime(duration)}
+          <div className="flex items-center gap-2 md:flex-1">
+            <div className="text-sm truncate flex-1 min-w-0">
+              {fileName ?? "No audio loaded"}
+            </div>
+            <button
+              type="button"
+              className="text-xs px-2 py-1 rounded-md border md:hidden"
+              onClick={() => setAdvancedOpen((v) => !v)}
+            >
+              {advancedOpen ? "Hide bands" : "Bands"}
+            </button>
+            <div className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
           </div>
         </div>
 
@@ -101,54 +116,56 @@ export default function AudioBar({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-          {(["bass", "mid", "treble"] as const).map((band) => (
-            <div key={band} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">{band.toUpperCase()}</div>
-                <select
-                  className="border rounded-md px-2 py-1 bg-background text-xs"
-                  value={bandTargets[band]}
-                  onChange={(e) =>
-                    setBandTargets({ ...bandTargets, [band]: e.target.value as TargetKey })
-                  }
-                >
-                  <option value="elementSize">Element Size</option>
-                  <option value="depth">Depth</option>
-                  <option value="animationSpeed">Animation Speed</option>
-                  <option value="planeSpacing">Plane Spacing</option>
-                  <option value="colorAnimationSpeed">Color Speed</option>
-                  <option value="shapeWarp">Shape Warp</option>
-                </select>
-              </div>
+        {(advancedOpen || typeof window === "undefined") && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            {(["bass", "mid", "treble"] as const).map((band) => (
+              <div key={band} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">{band.toUpperCase()}</div>
+                  <select
+                    className="border rounded-md px-2 py-1 bg-background text-xs"
+                    value={bandTargets[band]}
+                    onChange={(e) =>
+                      setBandTargets({ ...bandTargets, [band]: e.target.value as TargetKey })
+                    }
+                  >
+                    <option value="elementSize">Element Size</option>
+                    <option value="depth">Depth</option>
+                    <option value="animationSpeed">Animation Speed</option>
+                    <option value="planeSpacing">Plane Spacing</option>
+                    <option value="colorAnimationSpeed">Color Speed</option>
+                    <option value="shapeWarp">Shape Warp</option>
+                  </select>
+                </div>
 
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Gain</span>
-                <span>{bandGain[band].toFixed(1)}×</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={3}
-                step={0.1}
-                value={bandGain[band]}
-                onChange={(e) =>
-                  setBandGain({ ...bandGain, [band]: parseFloat(e.target.value) })
-                }
-                className="w-full"
-              />
-              <div className="h-1.5 rounded bg-secondary overflow-hidden">
-                <div
-                  className="h-full bg-primary"
-                  style={{ width: `${Math.round(bands[band] * 100)}%` }}
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Gain</span>
+                  <span>{bandGain[band].toFixed(1)}×</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={3}
+                  step={0.1}
+                  value={bandGain[band]}
+                  onChange={(e) =>
+                    setBandGain({ ...bandGain, [band]: parseFloat(e.target.value) })
+                  }
+                  className="w-full"
                 />
+                <div className="h-1.5 rounded bg-secondary overflow-hidden">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${Math.round(bands[band] * 100)}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-muted-foreground tabular-nums">
+                  {Math.round(bands[band] * 100)}%
+                </div>
               </div>
-              <div className="text-[10px] text-muted-foreground tabular-nums">
-                {Math.round(bands[band] * 100)}%
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div className="text-xs text-red-600">{error}</div>

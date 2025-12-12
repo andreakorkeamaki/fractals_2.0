@@ -16,6 +16,8 @@ interface CustomColors {
 }
 
 interface FractalControlsProps {
+  open: boolean;
+  onToggleOpen: () => void;
   blendFactors: THREE.Vector3;
   updateBlendFactor: (index: number, value: number) => void;
   blendMethod: number;
@@ -45,6 +47,8 @@ interface FractalControlsProps {
 }
 
 export function FractalControls({
+  open,
+  onToggleOpen,
   blendFactors,
   updateBlendFactor,
   blendMethod,
@@ -72,10 +76,13 @@ export function FractalControls({
   backgroundColor,
   setBackgroundColor,
 }: FractalControlsProps) {
+  if (!open) return null;
+
   return (
-    <div className="fixed right-4 top-4 w-80 bg-white dark:bg-slate-900 shadow-lg rounded-lg overflow-hidden z-10">
+    <div className="fixed right-2 top-2 md:right-4 md:top-4 w-[90vw] max-w-sm md:w-80 bg-white dark:bg-slate-900 shadow-lg rounded-lg overflow-hidden z-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
       <Tabs defaultValue="settings">
-        <TabsList className="grid grid-cols-2 w-full">
+        <div className="flex items-center justify-between px-2 pt-2">
+          <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="settings" className="flex items-center gap-1">
             <Settings className="w-4 h-4" />
             <span>Settings</span>
@@ -84,7 +91,17 @@ export function FractalControls({
             <Palette className="w-4 h-4" />
             <span>Colors</span>
           </TabsTrigger>
-        </TabsList>
+          </TabsList>
+
+          <button
+            type="button"
+            aria-label="Close settings"
+            onClick={onToggleOpen}
+            className="ml-2 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted md:hidden"
+          >
+            Close
+          </button>
+        </div>
 
         <TabsContent value="settings" className="p-4 space-y-4">
           <Card>

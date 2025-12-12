@@ -1,10 +1,11 @@
 // Aggiungere dichiarazioni di tipo per i moduli mancanti all'inizio del file
 "use client"
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
+import { Settings } from "lucide-react";
 
 // Import componenti personalizzati
 import { FractalCurves } from "./components/FractalCurves";
@@ -43,6 +44,15 @@ export function FractalGenerator() {
   const [depth, setDepth] = useState(1.0);
   const [planeSpacing, setPlaneSpacing] = useState(1.0);
   const [shapeWarp, setShapeWarp] = useState(0.0);
+  const [controlsOpen, setControlsOpen] = useState(true);
+
+  useEffect(() => {
+    // Collapse controls by default on small screens
+    if (typeof window !== "undefined") {
+      const isSmall = window.matchMedia("(max-width: 768px)").matches;
+      if (isSmall) setControlsOpen(false);
+    }
+  }, []);
 
   const audio = useAudioAnalyzer();
   type TargetKey =
@@ -144,6 +154,8 @@ export function FractalGenerator() {
   return (
     <div className="h-screen w-screen overflow-hidden">
       <FractalControls
+        open={controlsOpen}
+        onToggleOpen={() => setControlsOpen((v) => !v)}
         blendFactors={blendFactors}
         updateBlendFactor={updateBlendFactor}
         blendMethod={blendMethod}
@@ -171,6 +183,15 @@ export function FractalGenerator() {
         backgroundColor={backgroundColor}
         setBackgroundColor={setBackgroundColor}
       />
+
+      <button
+        type="button"
+        aria-label={controlsOpen ? "Close settings" : "Open settings"}
+        onClick={() => setControlsOpen((v) => !v)}
+        className="fixed right-3 top-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/90 shadow-lg ring-1 ring-border backdrop-blur hover:bg-white dark:bg-slate-950/90 md:hidden"
+      >
+        <Settings className="h-5 w-5" />
+      </button>
 
       <Canvas
         gl={{ preserveDrawingBuffer: true }}
